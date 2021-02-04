@@ -98,30 +98,44 @@ NSArray* getThermalValues(NSDictionary* sensors)
     return array;
 }
 
-void dumpValues(NSArray* values)
+void dumpValues(NSArray* kvs)
 {
-    int count = [values count];
+    int count = [kvs count];
     for (int i = 0; i < count; i++) {
         if (i > 0)
             printf(", ");
-        printf("%lf", [values[i] doubleValue]);
+        printf("%lf", [[kvs[i] lastObject] doubleValue]);
     }
 }
 
-void dumpNames(NSArray* names, NSString* cat)
+void dumpNames(NSArray* kvs, NSString* cat)
 {
-    int count = [names count];
+    int count = [kvs count];
     for (int i = 0; i < count; i++) {
         if (i > 0)
             printf(", ");
-        printf("%s (%s)", [names[i] UTF8String], [cat UTF8String]);
+        printf("%s (%s)", [[kvs[i] firstObject] UTF8String], [cat UTF8String]);
     }
+}
+
+NSArray* sortKeyValuePairs(NSArray* keys, NSArray* values)
+{
+
+    NSMutableArray* unsorted_array = [[NSMutableArray alloc] init];
+    for (int i = 0; i < [keys count]; i++) {
+        [unsorted_array addObject:[[NSArray alloc] initWithObjects:keys[i], values[i], nil]];
+    }
+
+    NSArray* sortedArray = [unsorted_array sortedArrayUsingComparator:^(id obj1, id obj2) {
+        return [[obj1 firstObject] compare:[obj2 firstObject]];
+    }];
+    return sortedArray;
 }
 
 void usage()
 {
     printf("-c: show current meter values\n"
-           "-v: show voltage meter values\n");
+           "-v: show voltage meter values\n");
     return;
 }
 
@@ -167,25 +181,42 @@ int main(int argc, char* argv[])
     NSArray* voltageNames = getProductNames(voltageSensors);
     NSArray* thermalNames = getProductNames(thermalSensors);
 
-    if (voltage_show)
-        dumpNames(voltageNames, @"V");
-    if (current_show)
-        dumpNames(currentNames, @"A");
-    if (temperature_show)
-        dumpNames(thermalNames, @"°C");
-    printf("\n");
-
+    bool shown = false;
     while (1) {
         NSArray* currentValues = getPowerValues(currentSensors);
         NSArray* voltageValues = getPowerValues(voltageSensors);
         NSArray* thermalValues = getThermalValues(thermalSensors);
 
-        if (voltage_show)
-            dumpValues(voltageValues);
-        if (current_show)
-            dumpValues(currentValues);
-        if (temperature_show)
-            dumpValues(thermalValues);
+        NSArray* sortedCurrent = sortKeyValuePairs(currentNames, currentValues);
+        NSArray* sortedVoltage = sortKeyValuePairs(voltageNames, voltageValues);
+        NSArray* sortedThermal = sortKeyValuePairs(thermalNames, thermalValues);
+
+        if (shown == false) {
+            if (voltage_show) {
+                dumpNames(sortedVoltage, @"V");
+                printf(", ");
+            }
+            if (current_show) {
+                dumpNames(sortedCurrent, @"A");
+                printf(", ");
+            }
+            if (temperature_show) {
+                dumpNames(sortedThermal, @"°C");
+            }
+            printf("\n");
+            shown = true;
+        }
+        if (voltage_show) {
+            dumpValues(sortedVoltage);
+            printf(", ");
+        }
+        if (current_show) {
+            dumpValues(sortedCurrent);
+            printf(", ");
+        }
+        if (temperature_show) {
+            dumpValues(sortedThermal);
+        }
         printf("\n");
 
         CFRelease(currentValues);
