@@ -135,23 +135,27 @@ NSArray* sortKeyValuePairs(NSArray* keys, NSArray* values)
 void usage()
 {
     printf("-c: show current meter values\n"
-           "-v: show voltage meter values\n");
+           "-v: show voltage meter values\n"
+           "-o: show values only once\n");
     return;
 }
 
 int main(int argc, char* argv[])
 {
 
-    bool voltage_show = false, current_show = false, temperature_show = true;
+    bool voltage_show = false, current_show = false, temperature_show = true, show_only_once = false;
     int ch;
 
-    while ((ch = getopt(argc, argv, "cv")) != -1) {
+    while ((ch = getopt(argc, argv, "cvo")) != -1) {
         switch (ch) {
         case 'v':
             voltage_show = true;
             break;
         case 'c':
             current_show = true;
+            break;
+        case 'o':
+            show_only_once = true;
             break;
         default:
             usage();
@@ -222,6 +226,10 @@ int main(int argc, char* argv[])
         CFRelease(currentValues);
         CFRelease(voltageValues);
         CFRelease(thermalValues);
+
+        if (show_only_once) {
+            exit(0);
+        }
 
         // sleep 1 second
         usleep(1000000);
